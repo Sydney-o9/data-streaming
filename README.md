@@ -11,3 +11,16 @@
 ## Data Streaming in Rust
 
 Assignment 1 of Claus Matzinger's [Async Streams in Rust](https://www.manning.com/liveproject/data-streaming-with-async-rust) live project.
+
+### Run the project
+
+```bash
+$ cargo run -- --from 2020-07-03T12:00:09Z --symbols LYFT,MSFT,AAPL,UBER,LYFT,FB,AMD,GOOG
+```
+
+### Run tests
+
+```bash
+$ cargo test
+
+```
