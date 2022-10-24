@@ -6,8 +6,8 @@ use yahoo_finance_api as yahoo;
 #[derive(Parser, Debug)]
 #[clap(
     version = "1.0",
-    author = "Claus Matzinger",
-    about = "A Manning LiveProject: async Rust"
+    author = "Sydney-o9",
+    about = "Manning LiveProject: async Rust - Assignment"
 )]
 struct Opts {
     #[clap(short, long, default_value = "AAPL,MSFT,UBER,GOOG")]
