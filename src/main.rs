@@ -43,54 +43,80 @@ trait AsyncStockSignal {
 ///
 /// A tuple `(absolute, relative)` difference.
 ///
-fn price_diff(a: &[f64]) -> Option<(f64, f64)> {
-    if !a.is_empty() {
-        // unwrap is safe here even if first == last
-        let (first, last) = (a.first().unwrap(), a.last().unwrap());
-        let abs_diff = last - first;
-        let first = if *first == 0.0 { 1.0 } else { *first };
-        let rel_diff = abs_diff / first;
-        Some((abs_diff, rel_diff))
-    } else {
-        None
+struct PriceDifference {}
+
+impl AsyncStockSignal for PriceDifference {
+    type SignalType = (f64, f64);
+
+    fn calculate(&self, a: &[f64]) -> Option<(f64, f64)> {
+        if !a.is_empty() {
+            // unwrap is safe here even if first == last
+            let (first, last) = (a.first().unwrap(), a.last().unwrap());
+            let abs_diff = last - first;
+            let first = if *first == 0.0 { 1.0 } else { *first };
+            let rel_diff = abs_diff / first;
+            Some((abs_diff, rel_diff))
+        } else {
+            None
+        }
     }
 }
 
 ///
 /// Window function to create a simple moving average
 ///
-fn n_window_sma(n: usize, series: &[f64]) -> Option<Vec<f64>> {
-    if !series.is_empty() && n > 1 {
-        Some(
-            series
-                .windows(n)
-                .map(|w| w.iter().sum::<f64>() / w.len() as f64)
-                .collect(),
-        )
-    } else {
-        None
+struct WindowedSMA {
+    window_size: usize
+}
+
+impl AsyncStockSignal for WindowedSMA {
+    type SignalType = Vec<f64>;
+
+    fn calculate(&self, series: &[f64]) -> Option<Vec<f64>> {
+        if !series.is_empty() && self.window_size > 1 {
+            Some(
+                series
+                    .windows(self.window_size)
+                    .map(|w| w.iter().sum::<f64>() / w.len() as f64)
+                    .collect(),
+            )
+        } else {
+            None
+        }
     }
 }
 
 ///
 /// Find the maximum in a series of f64
 ///
-fn max(series: &[f64]) -> Option<f64> {
-    if series.is_empty() {
-        None
-    } else {
-        Some(series.iter().fold(f64::MIN, |acc, q| acc.max(*q)))
+struct MaxPrice {}
+
+impl AsyncStockSignal for MaxPrice {
+    type SignalType = f64;
+
+    fn calculate(&self, series: &[f64]) -> Option<f64> {
+        if series.is_empty() {
+            None
+        } else {
+            Some(series.iter().fold(f64::MIN, |acc, q| acc.max(*q)))
+        }
     }
 }
 
 ///
 /// Find the minimum in a series of f64
 ///
-fn min(series: &[f64]) -> Option<f64> {
-    if series.is_empty() {
-        None
-    } else {
-        Some(series.iter().fold(f64::MAX, |acc, q| acc.min(*q)))
+struct MinPrice {}
+
+impl AsyncStockSignal for MinPrice {
+    type SignalType = f64;
+
+    fn calculate(&self, series: &[f64]) -> Option<f64> {
+        if series.is_empty() {
+            None
+        } else {
+            Some(series.iter().fold(f64::MAX, |acc, q| acc.min(*q)))
+        }
     }
 }
 
@@ -128,12 +154,16 @@ fn main() -> std::io::Result<()> {
     for symbol in opts.symbols.split(',') {
         let closes = fetch_closing_data(&symbol, &from, &to)?;
         if !closes.is_empty() {
-                // min/max of the period. unwrap() because those are Option types
-                let period_max: f64 = max(&closes).unwrap();
-                let period_min: f64 = min(&closes).unwrap();
-                let last_price = *closes.last().unwrap_or(&0.0);
-                let (_, pct_change) = price_diff(&closes).unwrap_or((0.0, 0.0));
-                let sma = n_window_sma(30, &closes).unwrap_or_default();
+            // min/max of the period. unwrap() because those are Option types
+            let max_signal = MaxPrice {};
+            let period_max = max_signal.calculate(&closes).unwrap();
+            let min_signal = MinPrice {};
+            let period_min: f64 = min_signal.calculate(&closes).unwrap();
+            let last_price = *closes.last().unwrap_or(&0.0);
+            let price_diff_signal = PriceDifference {};
+            let (_, pct_change) = price_diff_signal.calculate(&closes).unwrap_or((0.0, 0.0));
+            let windowed_sma_signal = WindowedSMA { window_size: 30 };
+            let sma = windowed_sma_signal.calculate(&closes).unwrap_or_default();
 
             // a simple way to output CSV data
             println!(
