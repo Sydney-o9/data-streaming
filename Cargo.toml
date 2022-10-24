@@ -7,5 +7,6 @@ version = "0.1.0"
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 clap = {version = "3.1.8", features = ["derive"]}
-yahoo_finance_api = { version = "1.1", features = ["blocking"] }
+yahoo_finance_api = { version = "1.1" }
 tokio = { version = "1.4.0", features = ["macros", "rt-multi-thread"] }
+async-trait = { version = "0.1.58" }
