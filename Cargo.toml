@@ -1,6 +1,6 @@
 [package]
 authors = ["Sydney-o9 <anthony.rey21@gmail.com>"]
-edition = "2022"
+edition = "2021"
 name = "manning-lp-async-rust-project-1-assignment-m1"
 version = "0.1.0"
 
