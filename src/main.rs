@@ -144,7 +144,8 @@ fn fetch_closing_data(
     }
 }
 
-fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
     let opts = Opts::parse();
     let from: DateTime<Utc> = opts.from.parse().expect("Couldn't parse 'from' date");
     let to = Utc::now();
@@ -186,8 +187,8 @@ mod tests {
     #![allow(non_snake_case)]
     use super::*;
 
-    #[test]
-    fn test_PriceDifference_calculate() {
+    #[tokio::test]
+    async fn test_PriceDifference_calculate() {
         let signal = PriceDifference {};
         assert_eq!(signal.calculate(&[]), None);
         assert_eq!(signal.calculate(&[1.0]), Some((0.0, 0.0)));
@@ -202,8 +203,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_MinPrice_calculate() {
+    #[tokio::test]
+    async fn test_MinPrice_calculate() {
         let signal = MinPrice {};
         assert_eq!(signal.calculate(&[]), None);
         assert_eq!(signal.calculate(&[1.0]), Some(1.0));
@@ -218,8 +219,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_MaxPrice_calculate() {
+    #[tokio::test]
+    async fn test_MaxPrice_calculate() {
         let signal = MaxPrice {};
         assert_eq!(signal.calculate(&[]), None);
         assert_eq!(signal.calculate(&[1.0]), Some(1.0));
@@ -234,8 +235,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_WindowedSMA_calculate() {
+    #[tokio::test]
+    async fn test_WindowedSMA_calculate() {
         let series = vec![2.0, 4.5, 5.3, 6.5, 4.7];
 
         let signal = WindowedSMA { window_size: 3 };
