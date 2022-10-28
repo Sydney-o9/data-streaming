@@ -206,7 +206,7 @@ async fn main() {
             interval.tick().await;
             let queries: Vec<_> = symbols
                 .iter()
-                .map(|&symbol| handle_symbol_data(&symbol, &from, &to))
+                .map(|&symbol| handle_symbol_data(symbol, &from, &to))
                 .collect();
             let _ = join_all(queries).await;
         }
