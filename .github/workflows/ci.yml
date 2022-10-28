@@ -26,7 +26,7 @@ jobs:
 
       - name: Lint
         run: |
-          cargoy clippy
+          cargo clippy
 
       - name: Test
         run: |
