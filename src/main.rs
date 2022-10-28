@@ -3,7 +3,9 @@ use clap::Parser;
 use std::io::{Error, ErrorKind};
 use yahoo_finance_api as yahoo;
 use async_trait::async_trait;
-
+use futures::future::{join_all};
+use tokio::time::{interval, Duration};
+use tokio::{task};
 #[derive(Parser, Debug)]
 #[clap(
     version = "1.0",
@@ -150,42 +152,67 @@ async fn fetch_closing_data(
     }
 }
 
+///
+/// Convenience function that chains together the entire processing chain.
+///
+async fn handle_symbol_data(
+    symbol: &str,
+    beginning: &DateTime<Utc>,
+    end: &DateTime<Utc>,
+) -> Option<Vec<f64>> {
+    let closes = fetch_closing_data(symbol, beginning, end).await.ok()?;
+    if !closes.is_empty() {
+        let diff = PriceDifference {};
+        let min = MinPrice {};
+        let max = MaxPrice {};
+        let sma = WindowedSMA { window_size: 30 };
+
+        let period_max: f64 = max.calculate(&closes).await?;
+        let period_min: f64 = min.calculate(&closes).await?;
+
+        let last_price = *closes.last()?;
+        let (_, pct_change) = diff.calculate(&closes).await?;
+        let sma = sma.calculate(&closes).await?;
+
+        println!(
+            "{},{},${:.2},{:.2}%,${:.2},${:.2},${:.2}",
+            beginning.to_rfc3339(),
+            symbol,
+            last_price,
+            pct_change * 100.0,
+            period_min,
+            period_max,
+            sma.last().unwrap_or(&0.0)
+        );
+    }
+    Some(closes)
+}
+
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() {
     let opts = Opts::parse();
     let from: DateTime<Utc> = opts.from.parse().expect("Couldn't parse 'from' date");
     let to = Utc::now();
 
-    // a simple way to output a CSV header
-    println!("period start,symbol,price,change %,min,max,30d avg");
-    for symbol in opts.symbols.split(',') {
-        let closes = fetch_closing_data(&symbol, &from, &to).await?;
-        if !closes.is_empty() {
-            // min/max of the period. unwrap() because those are Option types
-            let max_signal = MaxPrice {};
-            let period_max = max_signal.calculate(&closes).await.unwrap();
-            let min_signal = MinPrice {};
-            let period_min: f64 = min_signal.calculate(&closes).await.unwrap();
-            let last_price = *closes.last().unwrap_or(&0.0);
-            let price_diff_signal = PriceDifference {};
-            let (_, pct_change) = price_diff_signal.calculate(&closes).await.unwrap_or((0.0, 0.0));
-            let windowed_sma_signal = WindowedSMA { window_size: 30 };
-            let sma = windowed_sma_signal.calculate(&closes).await.unwrap_or_default();
+    let forever = task::spawn(async move {
 
-            // a simple way to output CSV data
-            println!(
-                "{},{},${:.2},{:.2}%,${:.2},${:.2},${:.2}",
-                from.to_rfc3339(),
-                symbol,
-                last_price,
-                pct_change * 100.0,
-                period_min,
-                period_max,
-                sma.last().unwrap_or(&0.0)
-            );
+        let mut interval = interval(Duration::from_secs(5));
+
+        println!("period start,symbol,price,change %,min,max,30d avg");
+
+        let symbols: Vec<&str> = opts.symbols.split(',').collect();
+
+        loop {
+            interval.tick().await;
+            let queries: Vec<_> = symbols
+                .iter()
+                .map(|&symbol| handle_symbol_data(symbol, &from, &to))
+                .collect();
+            let _ = join_all(queries).await;
         }
-    }
-    Ok(())
+    });
+    
+    forever.await.unwrap();
 }
 
 #[cfg(test)]
